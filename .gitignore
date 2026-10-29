@@ -6,3 +6,4 @@
 !*.R
 !README.md
 !.gitignore
+.Rproj.user
