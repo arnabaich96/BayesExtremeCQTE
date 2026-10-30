@@ -1,11 +1,10 @@
-# Track only the R code, the README and the renv files. Data, fitted models, tables, figures and logs
-# written by the pipeline (Synthetic_Data/, Simulation/output/, Application/data/, Application/output/,
-# Results/) are ignored.
+# Track only the R code and the README. Data, fitted models, tables, figures and logs written by the
+# pipeline (Synthetic_Data/, Simulation/output/, Application/data/, Application/output/, Results/)
+# are ignored.
 *
 !*/
 !*.R
 !README.md
 !.gitignore
-!.Rprofile
-!renv.lock
 .Rproj.user
+.posit/assistant
