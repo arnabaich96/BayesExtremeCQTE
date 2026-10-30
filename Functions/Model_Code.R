@@ -1,8 +1,5 @@
-# NIMBLE model code shared by the simulation (Report.R) and the application (Report_RealData.R).
-# Gamma and inverse-Gaussian kernels share one template; dTotal comes from the kernel file
-# sourced in Sim(). The lognormal kernel places the component location on the log scale.
-# Hyperparameters and the threshold lower bound l_u enter as constants (see mixgpd_hyper());
-# dlnormTrunc is defined in Prior_Distributions.R.
+# NIMBLE code of the MixGPD outcome model for one arm; dTotal comes from the kernel file sourced in Sim().
+# Hyperparameters (mixgpd_hyper(), Supplementary Table S5) and the threshold bound l_u enter as constants.
 library(nimble)
 
 mixgpd_code <- function(kern = c("gamma", "normal", "lognormal")) {
@@ -31,11 +28,11 @@ mixgpd_code <- function(kern = c("gamma", "normal", "lognormal")) {
         delta1[k] ~ dnorm(mean = 0, sd = delta_sd)
       }
 
-      # tail parameters (informative priors of the original analysis; see mixgpd_hyper())
+      # GPD tail parameters
       xi ~ T(dnorm(mean = 0.25, sd = xi_sd), -0.5, Inf)
       sigma ~ dgamma(shape = 2, scale = sigma_scale)
 
-      # dispersions of the latent locations and thresholds
+      # precisions (on the log scale) of the latent locations and thresholds
       var1 ~ dinvgamma(shape = 2, scale = 1)
       var2 ~ dinvgamma(shape = 2, scale = 1)
 
@@ -94,12 +91,11 @@ mixgpd_code <- function(kern = c("gamma", "normal", "lognormal")) {
   }
 }
 
-# Prior hyperparameters actually used. "sim" = simulation study, "app" = diabetes application.
+# Prior hyperparameters: "sim" = simulation study, "app" = diabetes application (Supplementary Table S5).
 mixgpd_hyper <- function(setting = c("sim", "app"), kern = c("gamma", "normal", "lognormal"),
                          arm = c("treatment", "control")) {
   setting <- match.arg(setting); kern <- match.arg(kern); arm <- match.arg(arm)
   trt <- arm == "treatment"
-  # GPD priors: xi ~ N(0.25, xi_sd^2) truncated to (-0.5, Inf); sigma ~ Gamma(2, scale = sigma_scale)
   if (setting == "sim") {
     list(alpha_scale = 1, eta_shape = if (trt) 2 else 1,
          theta_sd1 = 1, theta_sd = 1, delta_sd1 = 1, delta_sd = 1,

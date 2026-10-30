@@ -1,11 +1,7 @@
-# Custom NIMBLE distributions used by the MixGPD model code (Model_Code.R).
+# Lognormal truncated below at l_u for the latent threshold u(x); 1 - F(l_u) is computed on the log scale
+# because NIMBLE's T() truncation underflows when exp(meanlog) is far below l_u.
 library(nimble)
 
-# ---------------------------------------------------------------------------
-# Lognormal truncated below at `lower`, for the covariate-dependent threshold u(x) >= l_u.
-# The normalising constant 1 - F(lower) is computed on the log scale; NIMBLE's generic
-# T() truncation underflows when exp(meanlog) is far below `lower`.
-# ---------------------------------------------------------------------------
 dlnormTrunc <- nimbleFunction(
   run = function(x       = double(0),
                  meanlog = double(0),
@@ -38,9 +34,8 @@ rlnormTrunc <- nimbleFunction(
   }
 )
 
-# R-level conditional median of the truncated lognormal, used for prediction in Sim()
+# Median of the truncated lognormal, used for prediction in Sim(): solves P(U > m) = (1 - F(lower)) / 2
 median_lnormTrunc <- function(meanlog, sdlog, lower) {
   log_tail <- pnorm(log(lower), meanlog, sdlog, lower.tail = FALSE, log.p = TRUE)
-  # median solves P(U > m) = (1 - F(lower)) / 2, evaluated on the log scale
   pmax(lower, exp(qnorm(log_tail - log(2), meanlog, sdlog, lower.tail = FALSE, log.p = TRUE)))
 }

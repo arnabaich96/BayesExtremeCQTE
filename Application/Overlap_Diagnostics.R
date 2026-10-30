@@ -1,10 +1,5 @@
-#!/usr/bin/env Rscript
-# Overlap_Diagnostics.R
-# Propensity-score overlap and covariate balance for the diabetes application.
-# Reads Application/output/PS_main.rds (written by MixGpd_Diabetes.R): posterior-mean PS from the
-# Bayesian logistic model, treatment (obesity, BMI >= 30) and covariates of the main analysis data set.
-# Outputs: Results/Application/Diabetes/Figures/fig_ps_overlap_bw.png, fig_love_plot_bw.png
-#          Results/Application/Diabetes/Tables/Overlap_Summary.csv, Balance_SMD.csv, table_balance.tex
+# PS overlap figure, covariate balance table and Love plot of the application (Supplementary Section S5),
+# from the posterior-mean PS saved by MixGpd_Diabetes.R.
 
 suppressPackageStartupMessages({
   library(here)

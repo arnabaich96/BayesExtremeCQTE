@@ -1,7 +1,5 @@
-# Competing.R
-# Simulation study, competing methods (IPW, Extreme QR, Skew-t; Functions/other_method.R).
-# Writes the summary over replicates to Results/Simulation/Tables/<method>_<scenario>_<N>.csv.
-# ------------------------- Packages -------------------------
+# Competing methods of the simulation study (IPW, Extreme QR, Skew-t) on every replicate; writes the
+# summary over replicates to Results/Simulation/Tables/<method>_<scenario>_<N>.csv.
 suppressPackageStartupMessages({
   library(quantreg)
   library(future)

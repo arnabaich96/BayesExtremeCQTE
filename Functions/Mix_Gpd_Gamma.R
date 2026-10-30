@@ -1,4 +1,4 @@
-# DP mixture and Generalized Pareto Distribution
+# Gamma mixture spliced with a GPD tail: density dTotal, sampler rTotal, quantile qTotal.
 library(nimble)
 library(evd)
 # Density Function

@@ -1,10 +1,5 @@
-#!/usr/bin/env Rscript
-# MCMC_Diagnostics_Diabetes.R
-# Generates traceplot and ESS figures for the diabetes application MCMC.
-# Shows xi, sigma, alpha, and a representative threshold u (at median covariates).
-# Reads pre-saved mcmc.list RDS files from Application/output/.
-# Outputs PNG figures to Results/Application/Diabetes/Figures/.
-
+# Traceplots, effective sample sizes and R-hat of xi, sigma and the threshold u at the arm-wise median
+# profile, for the main fits of the application (Supplementary Section S6).
 suppressPackageStartupMessages({
   library(here)
   library(coda)
@@ -17,14 +12,11 @@ fig_dir <- here("Results/Application/Diabetes/Figures")
 dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
 
 KEY_PARAMS <- c("xi", "sigma", "u_rep")
-
-# Labels for facets (u_rep -> literal u; no hat notation)
 PARAM_LABELS <- c(xi = "\u03be", sigma = "\u03c3", u_rep = "u")
 
 source(here("Functions/Prior_Distributions.R"))   # median_lnormTrunc()
 
-# ---- Reconstruct arm-specific median design-matrix row ----
-# Uses the stage-1 PS and covariates stored by MixGpd_Diabetes.R (PS first, then covariates).
+# Arm-wise median design row (PS first, then the covariates), from the stage-1 output of MixGpd_Diabetes.R
 ps_obj <- readRDS(here("Application/output/PS_main.rds"))
 y_obs  <- readRDS(here("Application/data/Diabetes_Data.rds"))$glyhb
 build_median_X <- function(arm) {
@@ -36,8 +28,7 @@ arm_l_u <- function(arm, u_lower_q = 0.60) {
   unname(quantile(y_obs[ps_obj$T == as.integer(arm == "Treatment")], u_lower_q))
 }
 
-# Add u_rep column (representative threshold at median covariates) to each chain:
-# the conditional median of the l_u-truncated lognormal threshold, as used for prediction in Sim()
+# u_rep: conditional median of the l_u-truncated lognormal threshold at the median profile, as in Sim()
 add_u_rep <- function(mcmc_obj, X_median, l_u) {
   lapply(mcmc_obj, function(ch) {
     mat  <- as.matrix(ch)

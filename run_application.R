@@ -1,12 +1,5 @@
-# run_application.R
 # Application of the article: effect of obesity (BMI >= 30) on HbA1c in the Vanderbilt diabetes data.
-# Usage (from the repository root):  Rscript run_application.R
-#   1. Application/Prepare_Data.R            download (once), clean and multiply impute the data
-#   2. Application/MixGpd_Diabetes.R         PS model and all MixGPD fits (main and sensitivity analyses)
-#   3. Application/Overlap_Diagnostics.R     PS overlap figure, balance table and Love plot
-#   4. Application/MCMC_Diagnostics_Diabetes.R  traceplots, effective sample sizes and R-hat
-#   5. Application/Export_Interval_Tables.R  LaTeX tables of the stratified CQTEs and of the sensitivity analyses
-# The environment variable CQTE_CORES sets the number of parallel workers (default min(24, cores - 1)).
+# Usage: Rscript run_application.R (runs the five scripts below in order).
 library(here)
 
 run_script <- function(file) {

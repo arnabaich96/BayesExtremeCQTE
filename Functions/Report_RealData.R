@@ -1,32 +1,16 @@
-# Functions/Report_RealData.R
-# Two-stage MixGPD analysis of a real data set:
-#   fit_ps_app()         stage 1, Bayesian logistic propensity-score model (brms)
-#   fit_mixgpd_app()     stage 2, MixGPD outcome model per arm given one PS vector
-#   summarize_cqte_app() posterior summaries of the CQTE draws per profile and per stratum
-# Stacking the stage-2 draws over several PS draws (and imputed data sets) gives the cut posterior
-# that propagates stage-1 uncertainty; see Application/MixGpd_Diabetes.R.
+# Two-stage MixGPD analysis of the application: stage 1 PS model (fit_ps_app), stage 2 outcome model
+# per arm (fit_mixgpd_app) and posterior summaries of the CQTE draws (summarize_cqte_app).
 
-# Stage 1. Returns posterior-mean PS for the data and the grid, plus n_draws posterior PS draws.
-fit_ps_app <- function(T, X, newdata, n_draws = 0, seed = 2024, ps_model = NULL) {
+# Stage 1: Bayesian logistic PS model; returns the posterior-mean PS for the data and the grid.
+fit_ps_app <- function(T, X, newdata, seed = 2024) {
   D_ps <- data.frame(T = as.numeric(T), X)
-  if (is.null(ps_model)) {
-    ps_model <- brm(T ~ ., data = D_ps, family = bernoulli(link = "logit"),
-                    prior = set_prior("normal(0, 2.5)", class = "b"),
-                    refresh = 0, seed = seed)
-  } else {
-    ps_model <- update(ps_model, newdata = D_ps, recompile = FALSE, refresh = 0, seed = seed)
-  }
+  ps_model <- brm(T ~ ., data = D_ps, family = bernoulli(link = "logit"),
+                  prior = set_prior("normal(0, 2.5)", class = "b"),
+                  refresh = 0, seed = seed)
   newdata_X <- newdata[, names(X), drop = FALSE]
-  out <- list(model     = ps_model,
-              train     = fitted(ps_model)[, "Estimate"],
-              new       = fitted(ps_model, newdata = newdata_X)[, "Estimate"])
-  if (n_draws > 0) {
-    set.seed(seed)
-    draw_ids <- sample(ndraws(ps_model), n_draws)
-    out$train_draws <- posterior_epred(ps_model, draw_ids = draw_ids)                    # K x n
-    out$new_draws   <- posterior_epred(ps_model, newdata = newdata_X, draw_ids = draw_ids) # K x G
-  }
-  out
+  list(model = ps_model,
+       train = fitted(ps_model)[, "Estimate"],
+       new   = fitted(ps_model, newdata = newdata_X)[, "Estimate"])
 }
 
 # Stage 2. y, T: outcome and treatment; X_design, new_X_design: PS first, then the covariates.
@@ -59,9 +43,8 @@ fit_mixgpd_app <- function(y, T, X_design, new_X_design, kern = c("gamma","norma
        exceed = c(treatment = mean(y[trt] > l_u[["treatment"]]), control = mean(y[!trt] > l_u[["control"]])))
 }
 
-# Posterior summaries of CQTE = Q_trt - Q_con. Q_trt, Q_con: lists over tau of (draws x profiles).
-# Stratum summaries average the CQTE over the profiles sharing a level, draw by draw.
-# The point estimate is the posterior mean; the posterior median is reported as well.
+# Posterior summaries of CQTE = Q_trt - Q_con (lists over tau of draws x profiles); stratum summaries
+# average the CQTE draw by draw over the profiles sharing a level. The estimate is the posterior mean.
 summarize_cqte_app <- function(Q_trt, Q_con, newdata, p_QTE, CP = 0.90, strata = c("age", "stab.glu", "gender")) {
   lo <- 0.5 * (1 - CP); hi <- 1 - lo
   prof <- strat <- list()

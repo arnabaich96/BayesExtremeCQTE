@@ -69,7 +69,7 @@ Simulation/
   Make_Tables.R, Summarize_Diagnostics.R, Analysis.R
                                       tables, MCMC diagnostics and heatmaps
 Application/
-  Prepare_Data.R                      download, treatment definition and multiple imputation
+  Prepare_Data.R                      download, treatment definition and imputation
   MixGpd_Diabetes.R                   PS model and all MixGPD fits (main and sensitivity analyses)
   Overlap_Diagnostics.R               PS overlap and covariate balance
   MCMC_Diagnostics_Diabetes.R         traceplots, effective sample sizes and R-hat
@@ -107,7 +107,8 @@ BMI is used only to define the treatment. It is not a confounder and is not kept
 because the treatment is a deterministic function of BMI and adjusting for it would violate the overlap
 assumption. Waist and hip circumference, which are alternative measurements of adiposity, are not used
 either. The 19 subjects with missing HbA1c, height or weight are excluded (n = 384). The remaining missing
-covariate values are imputed by chained equations (10 imputations).
+covariate values are imputed by chained equations with predictive mean matching, and the analysis uses the
+first completed data set.
 
 ## Reproducibility
 

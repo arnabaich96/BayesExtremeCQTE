@@ -1,6 +1,5 @@
-# Extreme quantile regression (Extreme QR) for the CQTE: arm-wise inverse-probability-weighted
-# quantile regression with extremal subsampling inference (Chernozhukov and Fernandez-Val, 2011)
-# at extreme levels; used by qte_extremeqr() in Functions/other_method.R.
+# Extreme QR competitor: arm-wise IPW quantile regression, with extremal subsampling intervals
+# (Chernozhukov and Fernandez-Val, 2011) at extreme levels and bootstrap intervals otherwise.
 extremeqr_build_arm_formula <- function(y_name, x_names) {
   rhs <- if (length(x_names)) paste(x_names, collapse = " + ") else "1"
   as.formula(paste0(y_name, " ~ ", rhs))

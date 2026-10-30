@@ -1,9 +1,5 @@
-# Make_Tables.R
-# Builds the LaTeX tables of the simulation study from Results/Simulation/Tables/*.csv
-# (written by Simulation/MixGpd.R and Simulation/Competing.R) and from the per-replicate
-# files in Simulation/output (for comparisons on a common subset of replicates).
-# Bias is estimate - truth for every method. "Overall" averages the 9 tau x 9 covariate-profile
-# cells; "Tail" averages the 5 x 9 cells with tau > 0.95.
+# LaTeX tables of the simulation study (Table 1, Supplementary Tables S2 and S3). Bias = estimate - truth;
+# "Overall" averages the 9 tau x 9 profile cells, "Tail" the 5 x 9 cells with tau > 0.95.
 library(here)
 library(dplyr)
 
@@ -29,18 +25,16 @@ summarize_cells <- function(df) {
     len_all = mean(df$length),   len_tail = mean(df$length[tail]))
 }
 
-method_rows <- function(tag, flip_mixgpd = FALSE) {
+method_rows <- function(tag) {
   rows <- lapply(names(methods), function(m) {
     df <- read_method(m, tag)
     if (is.null(df)) return(NULL)
-    if (flip_mixgpd && startsWith(m, "MixGPD_")) df$bias <- -df$bias
     data.frame(Method = methods[[m]], t(summarize_cells(df)), check.names = FALSE)
   })
   do.call(rbind, rows)
 }
 
-# Averages of 10^4 or more in absolute value (the back-transformed extreme quantiles of Skew-t)
-# are printed as bounds instead of meaningless digits.
+# averages of 10^4 or more in absolute value (Skew-t at extreme levels) are printed as bounds
 fmt_num <- function(x) {
   ifelse(x >= 1e4, "$>10^4$", ifelse(x <= -1e4, "$<-10^4$", sprintf("%.3f", x)))
 }

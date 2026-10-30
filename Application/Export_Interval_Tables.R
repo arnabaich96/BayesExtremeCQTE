@@ -1,10 +1,5 @@
-#!/usr/bin/env Rscript
-# Export the LaTeX tables of the diabetes application from the saved posterior draws
-# (Application/output/draws, written by MixGpd_Diabetes.R).
-# Stratum summaries average the CQTE over the prediction profiles sharing a covariate level, draw by draw,
-# so each cell is a posterior summary of that average: posterior mean (90% credible interval)
-# [posterior probability that the averaged CQTE is positive].
-# Use: Rscript Application/Export_Interval_Tables.R
+# LaTeX tables of the application (Tables 3-5 and Supplementary Table S7) from the saved CQTE draws.
+# Each cell: posterior mean (90% credible interval) [P(CQTE > 0)] of the CQTE averaged draw by draw over profiles.
 
 suppressPackageStartupMessages({
   library(here)
@@ -44,8 +39,8 @@ cell <- function(s, prob = TRUE) {
 tau_label <- function(t) ifelse(t < 0.99, sub("0+$", "", formatC(t, format = "f", digits = 3)),
                                 formatC(t, format = "f", digits = 4))
 
-jobs_by <- list(main = "main", prop = sprintf("prop%02d", 1:10), lu50 = "lu50", lu70 = "lu70",
-                lu80 = "lu80", trim = "trim", noglu = "noglu", xisd10 = "xisd10")
+jobs_by <- list(main = "main", lu50 = "lu50", lu70 = "lu70", lu80 = "lu80", trim = "trim",
+                noglu = "noglu", xisd10 = "xisd10")
 
 # ---------- Stratified tables (main analysis, MixInvNormGPD and MixGammaGPD) ----------
 strat_table <- function(var, labels, file) {
@@ -72,7 +67,6 @@ cat("Grid levels: age", sort(unique(g0$age)), "| stab.glu", sort(unique(g0$stab.
 sens_taus_idx <- c(2, 4, 6, 7, 9)   # tau = 0.5, 0.95, 1 - 5/n, 1 - n^-1.25, 1 - n^-1.5
 sens_rows <- list(
   c("Main analysis (plug-in PS, $l_u$ at 60th percentile)", "main"),
-  c("PS and imputation uncertainty propagated ($K = 10$)", "prop"),
   c("$l_u$ at 50th percentile", "lu50"),
   c("$l_u$ at 70th percentile", "lu70"),
   c("$l_u$ at 80th percentile", "lu80"),

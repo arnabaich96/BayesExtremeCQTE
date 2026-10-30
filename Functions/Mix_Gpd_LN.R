@@ -1,5 +1,6 @@
+# Lognormal mixture spliced with a GPD tail: density dTotal, sampler rTotal, quantile qTotal.
 library(nimble)
-library(evd)   # for qgpd in the quantile function later
+library(evd)   # qgpd in qTotal
 
 dTotal<- nimbleFunction(
   run = function(x      = double(0),

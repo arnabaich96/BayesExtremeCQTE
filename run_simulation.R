@@ -1,16 +1,5 @@
-# run_simulation.R
-# Simulation study of the article: n = 500, 100 replicates per scenario.
-# Usage (from the repository root):  Rscript run_simulation.R [step ...]
-#   data       simulated data of S1-S3 (Synthetic_Data/) and the true quantile surfaces (Suppl.)
-#   S1, S2, S3 MixGPD (Gamma, inverse-Gaussian and lognormal kernels), IPW and Extreme QR on
-#              S1 (spliced), S2 (Burr XII) and S3 (lognormal mixture)
-#   threshold  MixGammaGPD on S1 with l_u at the 50th, 70th and 80th percentiles (first 50 replicates)
-#   ps         MixGammaGPD on S1 with K = 5 posterior PS draws (first 50 replicates)
-#   skewt      Skew-t (bootstrap) on S1-S3
-#   tables     LaTeX tables, MCMC diagnostics summary and heatmaps
-# Without arguments all steps run in this order. MixGPD fits are saved per replicate in
-# Simulation/output, so an interrupted step resumes where it stopped.
-# The environment variable CQTE_CORES sets the number of parallel workers (default min(24, cores - 1)).
+# Simulation study of the article (n = 500, 100 replicates per scenario); steps are described in README.md.
+# Usage: Rscript run_simulation.R [data S1 S2 S3 threshold ps skewt tables]; without arguments all steps run.
 library(here)
 
 steps <- commandArgs(trailingOnly = TRUE)

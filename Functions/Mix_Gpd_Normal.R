@@ -1,13 +1,9 @@
-## ================================================================
-## DP mixture with Inverse-Gaussian bulk and GPD tail
-## ================================================================
+# Inverse-Gaussian mixture spliced with a GPD tail: density dTotal, sampler rTotal, quantile qTotal.
 
 library(nimble)
 library(evd)  # for qgpd in qTotal (R-level only)
 
-## ================================================================
-## 1. Density: dTotal (Inverse-Gaussian mixture + GPD tail)
-## ================================================================
+## ---- Density ----
 
 dTotal <- nimbleFunction(
   run = function(x      = double(0),
@@ -35,8 +31,7 @@ dTotal <- nimbleFunction(
           
           if (mu_j > 0.0) {
             if (lam_j > 0.0) {
-              ## IG pdf: f(x; mu_j, lam_j)
-              ## sqrt(λ / (2π x^3)) * exp(-λ (x-μ)^2 / (2 μ^2 x))
+              ## inverse-Gaussian density
               pi_val <- 3.141592653589793
               cst  <- sqrt(lam_j / (2.0 * pi_val * x^3))
               expo <- -lam_j * (x - mu_j) * (x - mu_j) /
@@ -48,8 +43,7 @@ dTotal <- nimbleFunction(
       }
       
     } else {
-      ## ---------------- TAIL: GPD with mixing weight = 1 - P(Y < u) ---
-      ## Mixture mass below threshold P = Pr(Y < u)
+      ## ---------------- TAIL: GPD with mixing weight 1 - P, P = Pr(Y < u) ----------------
       P <- 0.0
       if (u > 0.0) {
         for (j in 1:K) {
@@ -58,8 +52,7 @@ dTotal <- nimbleFunction(
           
           if (mu_j > 0.0) {
             if (lam_j > 0.0) {
-              ## IG CDF at u:
-              ## F(u; μ, λ) = Φ(√(λ/u)(u/μ - 1)) + exp(2λ/μ) Φ(-√(λ/u)(u/μ + 1))
+              ## inverse-Gaussian CDF at u
               s   <- sqrt(lam_j / u)
               t1  <- s * (u / mu_j - 1.0)
               t2  <- -s * (u / mu_j + 1.0)
@@ -71,7 +64,7 @@ dTotal <- nimbleFunction(
         }
       }
       
-      ## GPD tail density (same structure as original)
+      ## GPD tail density
       z <- (x - u) / sigma
       
       ## avoid && and composite logicals
@@ -100,9 +93,7 @@ dTotal <- nimbleFunction(
 
 c_dTotal <- compileNimble(dTotal)
 
-## ================================================================
-## 2. Sampler: rTotal (Inverse-Gaussian mixture + GPD tail)
-## ================================================================
+## ---- Sampler ----
 
 rTotal <- nimbleFunction(
   run = function(n      = integer(0),
@@ -192,8 +183,7 @@ rTotal <- nimbleFunction(
             chosen <- K
           }
           
-          ## Rejection sampling from IG(mu_j, lam_j) truncated at u,
-          ## implemented as finite loop with "accepted" flag (no break/repeat).
+          ## rejection sampling from IG(mu_j, lam_j) truncated at u (finite loop, no break)
           accepted <- 0L
           x_candidate <- 0.0
           for (iter in 1:10000) {
@@ -240,8 +230,7 @@ rTotal <- nimbleFunction(
     }
     
     if (tailFlag == 1L) {
-      ## same splice inversion as original GPD tail
-      ## a = (1 - y) / (1 - P)
+      ## GPD tail by inversion of the splice, a = (1 - y) / (1 - P)
       denom <- 1.0 - P
       if (denom <= 0.0) denom <- 1e-12
       a <- (1.0 - y) / denom
@@ -261,10 +250,7 @@ rTotal <- nimbleFunction(
 
 c_rTotal <- compileNimble(rTotal)
 
-## ================================================================
-## 3. Quantile: qTotal (Inverse-Gaussian mixture + GPD tail)
-##   (R-level only; not a nimbleFunction)
-## ================================================================
+## ---- Quantile function (R level) ----
 
 ## R-level IG CDF: scalar q, vector (mu, lambda)
 pinvnorm <- function(q, mu, lambda) {
@@ -290,8 +276,7 @@ pinvnorm <- function(q, mu, lambda) {
 
 ## Quantile Function: IG mixture + GPD tail
 qTotal <- function(p, weights, mu, eta, u, sigma, xi) {
-  ## mu:  IG means
-  ## eta: IG shapes (lambda_j)
+  ## mu: IG means; eta: IG shapes (lambda_j)
   
   mu      <- as.numeric(mu)
   eta     <- as.numeric(eta)

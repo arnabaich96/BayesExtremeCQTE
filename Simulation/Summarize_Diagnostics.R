@@ -1,7 +1,5 @@
-# Summarize_Diagnostics.R
-# Convergence and mixture diagnostics of the MixGPD simulation fits, from the per-replicate files
-# Simulation/output/Diagnostics/diag_<tag>_<kern>.csv written by Functions/Report.R.
-# Output: Results/Simulation/Tables/Diagnostics_Summary.csv and table_sim_diagnostics.tex
+# MCMC and mixture diagnostics of the MixGPD simulation fits (Supplementary Table S4), from the
+# diagnostics files written by Functions/Report.R.
 library(here)
 library(dplyr)
 

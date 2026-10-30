@@ -1,35 +1,13 @@
-# my_data_sim.R
-# Data-generating mechanisms of the simulation study and the true CQTEs:
-#   S1 "spliced": Gamma-mixture (treatment) / lognormal-mixture (control) bulk with a GPD tail above
-#                 a covariate-dependent threshold (my_data_sim)
-#   S2 "burr", S3 "lnmix": misspecified scenarios without the spliced structure (sim_data_scenario)
-# Sourced by Simulation/Generate_Scenarios.R and Simulation/Plot_True_Quantile_Surfaces.R.
+# Data-generating mechanisms of scenarios S1 (spliced), S2 (Burr XII) and S3 (lognormal mixture) and their
+# true CQTEs (Supplementary Section S1).
 suppressPackageStartupMessages({
   library(here)
   library(parallel)
   library(doParallel)
   library(evd)
-  library(ggplot2)
 })
 
-## ============================================================
-## Helpers for Gamma-bulk (treatment) and Lognormal-bulk (control)
-## ============================================================
-
-# Gamma-mixture quantile for bulk (single draw)
-mix_q_gamma <- function(mu_vec, p, eta, wt) {
-  id <- sample.int(length(eta), 1, prob = wt)
-  qgamma(p, shape = eta[id], rate = eta[id] / mu_vec[id])
-}
-
-# Lognormal-mixture quantile for bulk (single draw)
-# mu_vec: component means; eta: sdlog
-mix_q_lnorm <- function(mu_vec, p, eta, wt) {
-  id <- sample.int(length(eta), 1, prob = wt)
-  sdlog   <- eta[id]
-  meanlog <- log(mu_vec[id]) - 0.5 * sdlog^2
-  qlnorm(p, meanlog = meanlog, sdlog = sdlog)
-}
+# ---------- S1: Gamma (treatment) and lognormal (control) mixtures spliced with a GPD tail ----------
 
 # Gamma-mixture CDF at thresholds u (for treatment arm)
 mix_cdf_gamma_at_u <- function(wt, eta, mu, u) {
@@ -90,18 +68,7 @@ qTotal_lnorm <- function(p, weights, mu, eta, u, sigma, xi) {
   }
 }
 
-## ============================================================
-## Data generator (NO intercepts; exp links; PS+X in bulk & tail)
-## ============================================================
-# treatment_params:
-#   wt, eta, theta_ps, theta_X, del_ps, del_x, sigma, xi
-#   (bulk is Gamma mixture)
-# control_params:
-#   same structure, but bulk is Lognormal mixture (eta = sdlog)
-#
-# Bulk mean:   mu_ij = exp(theta_ps_j * PS_i + X_i^T theta_X_{·j})
-# Tail thresh: u_i   = exp(del_ps * PS_i + X_i^T del_x)
-#
+# Data generator of S1 (no intercepts): mu_ij = exp(theta_ps_j PS_i + X_i' theta_X_j), u_i = exp(del_ps PS_i + X_i' del_x)
 my_data_sim <- function(r, N, n_cores, beta,
                         treatment_params,
                         control_params,
@@ -162,7 +129,7 @@ my_data_sim <- function(r, N, n_cores, beta,
   ## --- sample potential outcomes in parallel ---
   out$Y <- data.frame(matrix(nrow = N, ncol = r))
   out$T <- data.frame(matrix(nrow = N, ncol = r))
-  print_id <- sample.int(r, size = 1)
+  sample.int(r, size = 1)   # kept so that the random-number stream, and hence the data, match the article
   
   cl <- makeCluster(n_cores)
   registerDoParallel(cl)
@@ -194,17 +161,6 @@ my_data_sim <- function(r, N, n_cores, beta,
     y[tA==1] <- y1[tA==1]
     y[tA==0] <- y0[tA==0]
     out$Y[, rep_id] <- y
-    
-    if (rep_id == print_id && r > 1) {
-      D <- data.frame(y0 = y0, y1 = y1, y = y)
-      out$Densities_wgpd <- ggplot(D) +
-        geom_density(aes(x = y0, color = "Control")) +
-        geom_density(aes(x = y1, color = "Treatment")) +
-        geom_density(aes(x = y,  color = "Observed")) +
-        geom_vline(aes(xintercept = mean(u0), color = "Control"), linetype = "dashed") +
-        geom_vline(aes(xintercept = mean(u1), color = "Treatment"), linetype = "dashed") +
-        theme_classic() + xlab("Value") + ggtitle("Density with bulk/tail split")
-    }
   }
   names(out$Y) <- NULL; names(out$T) <- NULL
   
@@ -281,11 +237,7 @@ my_data_sim <- function(r, N, n_cores, beta,
   out
 }
 
-assign("my_data_sim", my_data_sim, .GlobalEnv)
-
-## ============================================================
-## Example parameterization (NO intercepts)
-## ============================================================
+# ---------- S1 parameters (Supplementary Section S1) ----------
 K   <- 3        # mixture components
 p_x <- 4        # number of covariates (including categorical X1)
 
@@ -309,7 +261,7 @@ treatment_params <- list(
 # Control: ALL Lognormal components (eta = sdlog)
 control_params <- list(
   wt       = c(0.55, 0.20, 0.25),
-  eta      = c(0.4, 0.5, 0.35),              # sdlog (example values)
+  eta      = c(0.4, 0.5, 0.35),              # sdlog
   theta_ps = c(0.4, 0.3, 0.5)/2,
   theta_X  = matrix(c(
     0.3,  0.4,  0.2,
@@ -323,14 +275,8 @@ control_params <- list(
   xi       = 0.25
 )
 
-## ============================================================
-## Misspecified scenarios (no spliced bulk/GPD structure)
-## ============================================================
-# S2 "burr":  Y(a) | x ~ Burr XII(c_a, k_a) with scale lambda_a(x) = exp(gam_ps * PS + x' gam_x).
-#             Regularly varying tail with index xi_a = 1/(c_a k_a), but no threshold above which the
-#             excesses are exactly GPD, and the tail scale changes with x.
-# S3 "lnmix": Y(a) | x ~ three-component lognormal mixture with no GPD tail (xi = 0 domain,
-#             slow convergence of excesses to the GPD limit).
+# ---------- Misspecified scenarios: S2 Burr XII with scale exp(gam_ps PS + x' gam_x), tail index 1/(c k);
+# S3 three-component lognormal mixture without a GPD tail ----------
 burr_params <- list(
   treatment = list(c = 3, k = 1.1, gam_ps = 0.3, gam_x = c(0.30, -0.10, 0.15, 0.05)),  # xi = 0.30
   control   = list(c = 4, k = 1.0, gam_ps = 0.2, gam_x = c(0.20, -0.15, 0.10, 0.10))   # xi = 0.25

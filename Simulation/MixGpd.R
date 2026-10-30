@@ -1,8 +1,5 @@
-# MixGpd.R
-# Simulation study, MixGPD estimators: fits the two-stage MixGPD model to every replicate of a
-# simulated data set (Functions/Report.R) and writes the summary over replicates to
-# Results/Simulation/Tables/MixGPD_<scenario>_<N><suffix>_<kern>.csv.
-# Per-replicate results are kept in Simulation/output, so an interrupted run resumes.
+# MixGPD estimators of the simulation study on every replicate (Functions/Report.R); writes the summary
+# over replicates to Results/Simulation/Tables/MixGPD_<scenario>_<N><suffix>_<kern>.csv.
 suppressPackageStartupMessages({
   library(here)
   library(dplyr)
@@ -10,10 +7,7 @@ suppressPackageStartupMessages({
 })
 source(here("Functions/Report.R"))
 
-# scenario:   data-generating scenario ("spliced" = S1, "burr" = S2, "lnmix" = S3)
-# u_lower_q:  quantile level of the arm-specific threshold lower bound l_u
-# n_ps_draws: 0 = plug-in PS; K > 0 = propagate PS uncertainty with K posterior PS draws
-# suffix:     appended to the output tag (e.g. "_lu70", "_ps5")
+# scenario: "spliced" = S1, "burr" = S2, "lnmix" = S3; u_lower_q and n_ps_draws as in Report(); suffix: output tag
 # MCMC defaults are those of the article: 3 chains of 5000 iterations, 1000 burn-in, thinning 3.
 run_simulation <- function(N, kern, scenario = "spliced", u_lower_q = 0.60, n_ps_draws = 0,
                            n_rep = 100, suffix = "", n_cores = 24,

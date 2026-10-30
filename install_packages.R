@@ -1,10 +1,5 @@
-# install_packages.R
-# Installs the R packages used by the pipeline. The results of the article were computed with
-# R 4.5.3 and the package versions below.
-#   Rscript install_packages.R          installs missing packages (current CRAN versions)
-#   Rscript install_packages.R --exact  installs the listed versions with remotes::install_version()
-# brms fits its models with rstan and nimble compiles its models, so both need a C++ toolchain
-# (Rtools on Windows, Xcode command line tools on macOS).
+# Installs the R packages of the pipeline; the article used R 4.5.3 and the versions below.
+# Usage: Rscript install_packages.R [--exact]; --exact installs the listed versions.
 versions <- c(
   "brms"         = "2.22.0",
   "rstan"        = "2.32.7",
@@ -19,13 +14,11 @@ versions <- c(
   "ggplot2"      = "3.5.2",
   "here"         = "1.0.1",
   "mice"         = "3.18.0",
-  "patchwork"    = "1.3.0",
   "progressr"    = "0.15.1",
   "purrr"        = "1.0.4",
   "quantreg"     = "6.1",
   "readr"        = "2.1.5",
   "scales"       = "1.4.0",
-  "scico"        = "1.5.0",
   "sn"           = "2.1.3",
   "stringr"      = "1.5.1",
   "tibble"       = "3.2.1",

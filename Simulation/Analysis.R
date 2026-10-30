@@ -1,12 +1,7 @@
-# ======================= Analysis.R =======================
-# Heatmaps of bias, coverage, SD, RMSE and interval width over the 9 quantile levels x 9 covariate
-# profiles (Supplementary Material), from Results/Simulation/Tables/*.csv.
-# Output: Results/Simulation/Figures/Competing_<scenario>_N500_<metric>_<bw|color>.png and
-#         Results/Simulation/Figures/Mixgpd_<scenario>_N500_<metric>_<bw|color>.png
+# Heatmaps of the simulation metrics over the 9 quantile levels x 9 covariate profiles (Supplementary
+# Section S3), from Results/Simulation/Tables/*.csv; output in Results/Simulation/Figures.
 library(here)
 library(tidyverse)   # dplyr, readr, purrr, stringr, ggplot2
-library(patchwork)
-library(scico)
 
 # ---------- Helpers ----------
 
@@ -30,8 +25,6 @@ library(scico)
     "bias"     = c("bias"),
     "coverage" = c("coverage"),
     "length"   = c("length_ci", "length"),
-    "len"      = c("length_ci", "length"),
-    "ise"      = c("ise", "ISE"),
     "sd"       = c("SD", "sd"),
     c(metric)
   )
@@ -46,12 +39,12 @@ library(scico)
   hit[[1]]
 }
 
-# ---------- Load ALL tables once ----------
+# ---------- Load all tables once ----------
 load_all_sim_tables <- function(table_dir) {
   if (!dir.exists(table_dir)) stop("Directory not found: ", table_dir)
   all_csv <- list.files(table_dir, pattern = "\\.csv$", full.names = TRUE)
   if (!length(all_csv)) stop("No CSV files in: ", table_dir)
-  
+
   data_all <- all_csv %>%
     purrr::map_dfr(function(path) {
       base <- basename(path)
@@ -66,7 +59,7 @@ load_all_sim_tables <- function(table_dir) {
           )
         )
     })
-  
+
   message("Loaded ", nrow(data_all), " rows from ", length(all_csv), " files.")
   message("Methods: ",
           paste(sort(unique(data_all$method_raw)), collapse = ", "))
@@ -89,7 +82,7 @@ load_all_sim_tables <- function(table_dir) {
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select(-non_na_row, -row_val)
-  
+
   # columns
   heat_df <- heat_df %>%
     dplyr::group_by(method, tau_x) %>%
@@ -104,7 +97,7 @@ load_all_sim_tables <- function(table_dir) {
     ) %>%
     dplyr::ungroup() %>%
     dplyr::select(-non_na_col, -col_val)
-  
+
   heat_df
 }
 
@@ -118,14 +111,12 @@ load_all_sim_tables <- function(table_dir) {
   }, character(1))
 }
 
-# ==========================================================
-# NEW PANELS: 1×3 competing row + 1×2 MixGPD row
-# ==========================================================
+# ---------- Heatmap data: one row of panels per method family ----------
 
 .build_heat_df <- function(df, metric) {
   df <- df %>%
     filter(!is.na(x_num), !is.na(y_num))
-  
+
   # common tau_y across "method"
   y_by_method <- df %>%
     group_by(method) %>%
@@ -133,7 +124,7 @@ load_all_sim_tables <- function(table_dir) {
     pull(y_vals)
   common_y <- Reduce(intersect, y_by_method)
   common_y <- sort(common_y)
-  
+
   # common tau_x
   x_by_method <- df %>%
     group_by(method) %>%
@@ -182,9 +173,9 @@ load_all_sim_tables <- function(table_dir) {
       tau_x = factor(x_key, levels = keep_x, labels = x_labels),
       tau_y = factor(y_key, levels = keep_y, labels = y_labels)
     )
-  
+
   mcol <- .resolve_metric(metric, names(df))
-  
+
   heat_df <- df %>%
     group_by(method, tau_x, tau_y) %>%
     summarise(value = mean(.data[[mcol]], na.rm = TRUE), .groups = "drop") %>%
@@ -192,7 +183,7 @@ load_all_sim_tables <- function(table_dir) {
                     tau_y,
                     tau_x,
                     fill = list(value = NA_real_))
-  
+
   .broadcast_singletons(heat_df)
 }
 
@@ -203,11 +194,11 @@ load_all_sim_tables <- function(table_dir) {
     pull(y_num) %>%
     unique() %>%
     sort()
-  
+
   if (is.null(y_positions)) {
     return(y_ref)
   }
-  
+
   y_ref[y_positions]
 }
 
@@ -219,7 +210,6 @@ load_all_sim_tables <- function(table_dir) {
     file_prefix,
     y_positions = NULL,
     save_dir,
-    bw,
     scenario = "spliced"
 ) {
   data_all <- data_all %>% filter(!is.na(.data$scenario), .data$scenario == !!scenario,
@@ -240,40 +230,28 @@ load_all_sim_tables <- function(table_dir) {
       y_num  = as.numeric(as.character(y_index))
     ) %>%
     filter(y_num %in% keep_y)
-  
+
   if (!nrow(df)) {
     stop(
       "No rows for methods {", paste(methods, collapse = ", "),
       "} at N = ", sample_size
     )
   }
-  
+
   heat_df <- .build_heat_df(df, metric)
-  # Skew-t averages at extreme tau reach 1e20 and more; scale the colours on the remaining cells
-  # and show the larger ones saturated (oob = squish) so that the other methods stay readable
+  # Skew-t averages at extreme tau reach 1e20 and more: colour limits from the other cells, larger ones saturated
   limits  <- range(heat_df$value[abs(heat_df$value) < 1e4], na.rm = TRUE)
   mcol    <- .resolve_metric(metric, names(df))
-  
-  if (!bw) {
-    fill_scale <- scico::scale_fill_scico(
-      palette = "vik",
-      limits  = limits,
-      name    = stringr::str_to_title(mcol),
-      oob     = scales::squish
-    )
-    suffix <- "color"
-    base_theme <- theme_minimal(base_size = 14)
-  } else {
-    fill_scale <- scale_fill_gradient(
-      low = "white", high = "black",
-      limits = limits,
-      name = stringr::str_to_title(mcol),
-      oob = scales::squish
-    )
-    suffix <- "bw"
-    base_theme <- theme_bw(base_size = 14)
-  }
-  
+
+  fill_scale <- scale_fill_gradient(
+    low = "white", high = "black",
+    limits = limits,
+    name = stringr::str_to_title(mcol),
+    oob = scales::squish
+  )
+  suffix <- "bw"
+  base_theme <- theme_bw(base_size = 14)
+
   label_fill <- if (tolower(metric) == "sd" || metric == "SD") "SD" else stringr::str_to_title(mcol)
   n_methods <- dplyr::n_distinct(heat_df$method)
   plot_width <- max(12, 3.5 * n_methods)
@@ -298,19 +276,19 @@ load_all_sim_tables <- function(table_dir) {
       panel.grid.minor.x = element_blank()
     ) +
     if (tolower(metric) == "sd" || metric == "SD") guides(fill = guide_legend(title = "SD")) else NULL
-  
+
   if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
-  
+
   metric_tag <- gsub("\\s+", "", tolower(mcol))
   base_name <- file.path(
     save_dir,
     paste0(file_prefix, "_", scenario, "_N", sample_size, "_", metric_tag, "_", suffix)
   )
-  
+
   ggsave(paste0(base_name, ".png"),
          plot = p, width = plot_width, height = 5, dpi = 300, bg = "white")
   message("Saved competing-family figure: ", base_name, ".png")
-  
+
   p
 }
 
@@ -320,7 +298,6 @@ plot_competing_row <- function(
     sample_size,
     metric    = "coverage",
     save_dir  = here("Results/Simulation/Figures"),
-    bw        = FALSE,
     scenario  = "spliced"
 ) {
   .plot_competing_family(
@@ -330,78 +307,62 @@ plot_competing_row <- function(
     methods = c("IPW", "ExtremeQR", "SkewT"),
     file_prefix = "Competing",
     save_dir = save_dir,
-    bw = bw,
     scenario = scenario
   )
 }
 
-# ---- 2) Three MixGPD models: gamma vs normal vs lognormal (1×3 row) ----
+# ---- 2) Three MixGPD models: gamma vs normal vs lognormal (1x3 row) ----
 plot_mixgpd_row <- function(
     table_dir = here("Results/Simulation/Tables"),
     sample_size,
     metric   = "coverage",
     save_dir = here("Results/Simulation/Figures"),
-    bw       = FALSE,
     scenario = "spliced"
 ) {
   f_gamma    <- file.path(table_dir, paste0("MixGPD_", scenario, "_", sample_size, "_gamma.csv"))
   f_normal   <- file.path(table_dir, paste0("MixGPD_", scenario, "_", sample_size, "_normal.csv"))
   f_lognorm  <- file.path(table_dir, paste0("MixGPD_", scenario, "_", sample_size, "_lognormal.csv"))
-  
+
   if (!file.exists(f_gamma) || !file.exists(f_normal) || !file.exists(f_lognorm)) {
     stop("Missing one or more MixGPD files (gamma/normal/lognormal) for N = ", sample_size)
   }
-  
+
   gamma_df <- readr::read_csv(f_gamma, show_col_types = FALSE) %>%
     mutate(
       method = "MixGammaGPD",
       x_num  = as.numeric(as.character(x_index)),
       y_num  = as.numeric(as.character(y_index))
     )
-  
+
   normal_df <- readr::read_csv(f_normal, show_col_types = FALSE) %>%
     mutate(
       method = "MixInvNormGPD",
       x_num  = as.numeric(as.character(x_index)),
       y_num  = as.numeric(as.character(y_index))
     )
-  
+
   lognorm_df <- readr::read_csv(f_lognorm, show_col_types = FALSE) %>%
     mutate(
       method = "MixLogNormGPD",
       x_num  = as.numeric(as.character(x_index)),
       y_num  = as.numeric(as.character(y_index))
     )
-  
+
   df <- dplyr::bind_rows(gamma_df, normal_df, lognorm_df)
-  
+
   heat_df <- .build_heat_df(df, metric)
-  # Skew-t averages at extreme tau reach 1e20 and more; scale the colours on the remaining cells
-  # and show the larger ones saturated (oob = squish) so that the other methods stay readable
   limits  <- range(heat_df$value[abs(heat_df$value) < 1e4], na.rm = TRUE)
   mcol    <- .resolve_metric(metric, names(df))
-  
-  if (!bw) {
-    fill_scale <- scico::scale_fill_scico(
-      palette = "vik",
-      limits  = limits,
-      name    = stringr::str_to_title(mcol),
-      oob     = scales::squish
-    )
-    suffix <- "color"
-    base_theme <- theme_minimal(base_size = 14)
-  } else {
-    fill_scale <- scale_fill_gradient(
-      low = "white", high = "black",
-      limits = limits,
-      name   = stringr::str_to_title(mcol),
-      oob    = scales::squish
-    )
-    suffix <- "bw"
-    base_theme <- theme_bw(base_size = 14)
-  }
-  
-  label_y <- if (tolower(metric) == "sd" || metric == "SD") "SD" else if (tolower(metric) == "ise") "ISE" else stringr::str_to_title(mcol)
+
+  fill_scale <- scale_fill_gradient(
+    low = "white", high = "black",
+    limits = limits,
+    name   = stringr::str_to_title(mcol),
+    oob    = scales::squish
+  )
+  suffix <- "bw"
+  base_theme <- theme_bw(base_size = 14)
+
   label_fill <- if (tolower(metric) == "sd" || metric == "SD") "SD" else stringr::str_to_title(mcol)
   p <- ggplot(heat_df, aes(x = tau_x, y = tau_y, fill = value)) +
     geom_raster() +
@@ -424,58 +385,36 @@ plot_mixgpd_row <- function(
       panel.grid.minor.x = element_blank()
     ) +
     if (tolower(metric) == "sd" || metric == "SD") guides(fill = guide_legend(title = "SD")) else NULL
-  
+
   if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
-  
+
   metric_tag <- gsub("\\s+", "", tolower(mcol))
   base_name <- file.path(
     save_dir,
     paste0("Mixgpd_", scenario, "_N", sample_size, "_", metric_tag, "_", suffix)
   )
-  
+
   ggsave(paste0(base_name, ".png"),
          plot = p, width = 12, height = 5, dpi = 300, bg = "white")
   message("Saved MixGPD figure: ", base_name, ".png")
-  
+
   p
 }
 
-# ---------- Wrapper: two figures per measure (competing + MixGPD) ----------
-make_all_panel_pairs <- function(
-    table_dir = here("Results/Simulation/Tables"),
-    save_dir  = here("Results/Simulation/Figures"),
-    Ns        = 500,
-    metrics   = c("coverage", "bias", "SD", "ise", "length"),
-    scenarios = c("spliced", "burr", "lnmix")
-) {
-  # load once for all competing-method panels
-  all_tables <- load_all_sim_tables(table_dir)
-  
-  for (scen in scenarios) {
-    for (N in Ns) {
-      for (met in metrics) {
-        message("=== scenario = ", scen, " | N = ", N, " | metric = ", met, " ===")
-        for (bw_mode in c(FALSE, TRUE)) {
-          tryCatch({
-            plot_competing_row(data_all = all_tables, sample_size = N, metric = met,
-                               save_dir = save_dir, bw = bw_mode, scenario = scen)
-            plot_mixgpd_row(table_dir = table_dir, sample_size = N, metric = met,
-                            save_dir = save_dir, bw = bw_mode, scenario = scen)
-          }, error = function(e) message("Skipped (", scen, ", ", met, "): ", e$message))
-        }
-      }
-    }
+# ---------- Figures of the Supplementary Material: S1 all four metrics, S2 and S3 coverage and bias ----------
+table_dir <- here("Results/Simulation/Tables")
+save_dir  <- here("Results/Simulation/Figures")
+dir.create(save_dir, showWarnings = FALSE, recursive = TRUE)
+all_tables <- load_all_sim_tables(table_dir)
+figures <- list(spliced = c("coverage", "bias", "SD", "length"),
+                burr    = c("coverage", "bias"),
+                lnmix   = c("coverage", "bias"))
+for (scen in names(figures)) {
+  for (met in figures[[scen]]) {
+    message("=== scenario = ", scen, " | metric = ", met, " ===")
+    tryCatch({
+      plot_competing_row(data_all = all_tables, sample_size = 500, metric = met, save_dir = save_dir, scenario = scen)
+      plot_mixgpd_row(table_dir = table_dir, sample_size = 500, metric = met, save_dir = save_dir, scenario = scen)
+    }, error = function(e) message("Skipped (", scen, ", ", met, "): ", e$message))
   }
 }
-
-# ===================================================================
-# MASTER CALL: two figures per measure (1×3 competing, 1×3 MixGPD)
-# ===================================================================
-dir.create(here("Results/Simulation/Figures"), showWarnings = FALSE, recursive = TRUE)
-make_all_panel_pairs(
-  table_dir = here("Results/Simulation/Tables"),
-  save_dir  = here("Results/Simulation/Figures"),
-  Ns        = 500,
-  metrics   = c("coverage", "bias", "SD", "ise", "length"),
-  scenarios = c("spliced", "burr", "lnmix")
-)

@@ -1,6 +1,5 @@
-# MCMC Simulation Function (PS+X, exp-link, no intercepts)
-# data: list(y, X, full_X, l_u); l_u is the lower bound of the threshold u(x).
-# hyper: prior hyperparameters from mixgpd_hyper() (Model_Code.R).
+# MCMC fit of the MixGPD model for one arm and posterior conditional quantiles on the profiles full_X.
+# data: list(y, X, full_X, l_u), predictors PS first then X (no intercept); hyper: from mixgpd_hyper().
 Sim <- function(data, code, epsilon, n_mix, p_QTE, mcmc.plot = FALSE, kern =c("gamma","normal","lognormal"),
                 n_iter = 7500, n_burnin = 2500, n_chains = 1, n_thin = 1,
                 silent = FALSE, parallel = FALSE, hyper = list())
@@ -32,7 +31,7 @@ Sim <- function(data, code, epsilon, n_mix, p_QTE, mcmc.plot = FALSE, kern =c("g
   # --- Model constants include p, the threshold bound and the hyperparameters ---
   consts <- c(list(n = length(data$y), m = n_mix, p = ncol(X_mat), l_u = l_u), hyper)
 
-  # --- Inits (no theta0 / delta0): latent locations on the scale of the data, u above l_u ---
+  # --- Initial values: latent locations on the scale of the data, u above l_u ---
   y_med <- median(data$y)
   make_inits <- function() {
     ini <- list(
@@ -83,7 +82,7 @@ Sim <- function(data, code, epsilon, n_mix, p_QTE, mcmc.plot = FALSE, kern =c("g
   # normalize column names
   colnames(samples) <- gsub("\\s+", "", colnames(samples))
   
-  # --- Index builders (no theta0, no delta0) ---
+  # --- Column names of the monitored parameters ---
   .param_indexers <- function(m, p) list(
     W  = paste0("weights[", 1:m, "]"),
     E  = paste0("eta[",     1:m, "]"),
@@ -91,9 +90,8 @@ Sim <- function(data, code, epsilon, n_mix, p_QTE, mcmc.plot = FALSE, kern =c("g
     D1 = paste0("delta1[",  1:p, "]")
   )
   
-  # --- Per-τ quantile computation, with exp-link ---
-  # Latent locations and thresholds are set to their conditional medians given (theta1, delta1, var2):
-  # exp(lp) for Gamma/IG means, lp for the lognormal meanlog, and the l_u-truncated lognormal median for u.
+  # --- Per-tau conditional quantiles: latent locations and thresholds at their conditional medians ---
+  # (exp(lp) for Gamma/IG means, lp for the lognormal meanlog, the l_u-truncated lognormal median for u)
   .compute_Q_for_tau <- function(p_tau, samples, full_X, idx, m, p) {
     Xmat <- as.matrix(full_X); K <- nrow(Xmat); nD <- nrow(samples)
     needed <- c(idx$W, idx$E, idx$T1, idx$D1, "sigma", "xi", "var2")
@@ -155,45 +153,12 @@ Sim <- function(data, code, epsilon, n_mix, p_QTE, mcmc.plot = FALSE, kern =c("g
     )
   }
   my.list$estimated_quantiles <- Q
-  
-  # --- Optional Geweke ---
-  # if (isTRUE(mcmc.plot)) {
-  #   S <- ggs(samples)
-  #   my.list$geweke <- tryCatch(ggs_geweke(S, greek = TRUE),
-  #                              error = function(e) list(result=NULL, error=e))
-  # }
-  
-  # --- Summaries (no theta0, no delta0) ---
-  W  <- idx$W; E <- idx$E; T1 <- idx$T1; D1 <- idx$D1
-  
-  # draw-wise number of components with weight above epsilon (all m components enter the CQTE)
-  my.list$n_components <- rowSums(as.matrix(samples[, W, drop = FALSE]) > epsilon)
 
-  weights_mean <- colMeans(as.matrix(samples[, W,  drop = FALSE]))
-  eta_mean     <- colMeans(as.matrix(samples[, E,  drop = FALSE]))
-  theta1_mean  <- matrix(
-    colMeans(as.matrix(samples[, T1, drop = FALSE])),
-    nrow = consts$p, ncol = consts$m, byrow = FALSE
-  )
-  
-  # truncate weights and renormalize
-  ord <- order(weights_mean, decreasing = TRUE)
-  w_sorted <- weights_mean[ord]
-  id <- min(
-    which(cumsum(w_sorted) > 1 - epsilon),
-    which(w_sorted < epsilon)
-  )
-  w_sorted[id] <- 1 - sum(w_sorted[1:(id - 1)])
-  keep_ord <- ord[1:id]
-  
-  my.list$Mixture_parameters <- list(
-    weights = w_sorted[1:id],
-    eta     = eta_mean[keep_ord],
-    theta1  = theta1_mean[, keep_ord, drop = FALSE],
-    p       = consts$p
-  )
-  
-  # Tail parameters
+  # draw-wise number of components with weight above epsilon (all m components enter the CQTE)
+  my.list$n_components <- rowSums(as.matrix(samples[, idx$W, drop = FALSE]) > epsilon)
+
+  # posterior means of the threshold coefficients and tail parameters
+  D1 <- idx$D1
   delta1_mean <- colMeans(as.matrix(samples[, D1, drop = FALSE]))
   names(delta1_mean) <- paste0("delta1_", seq_len(consts$p))
   my.list$GPD_parameters <- data.frame(

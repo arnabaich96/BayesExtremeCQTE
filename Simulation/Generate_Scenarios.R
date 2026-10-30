@@ -1,6 +1,5 @@
-# Generate the simulated data sets of the simulation study (n = 500, 100 replicates):
-#   S1 "spliced" (Gamma / lognormal bulk + GPD tail), S2 "burr", S3 "lnmix".
-# Output: Synthetic_Data/Data_<scenario>_<N>.rds (the data are fully determined by the seed)
+# Simulated data sets of scenarios S1-S3 (n = 500, 100 replicates, seed 321) and their true CQTEs;
+# output: Synthetic_Data/Data_<scenario>_500.rds
 library(here)
 source(here("Simulation/my_data_sim.R"))
 dir.create(here("Synthetic_Data"), showWarnings = FALSE)
@@ -23,7 +22,7 @@ for (scenario in c("spliced", "burr", "lnmix")) {
       " | outcome quantiles (50/95/99%):", round(quantile(as.matrix(Data$Y), c(.5, .95, .99)), 2), "\n")
 }
 
-# Check that S1 no longer has a point mass at the threshold u(x)
+# check that S1 has no point mass at the threshold u(x)
 S1 <- readRDS(here(sprintf("Synthetic_Data/Data_spliced_%d.rds", N)))
 u_build <- function(par, PS, X) exp(as.numeric(par$del_ps * PS + X %*% par$del_x))
 u1 <- u_build(treatment_params, S1$PS, S1$X); u0 <- u_build(control_params, S1$PS, S1$X)

@@ -1,8 +1,5 @@
-# Competing methods of the simulation study (Simulation/Competing.R):
-#   qte_ipw()         IPW linear quantile regression with treatment-by-covariate interactions
-#   qte_extremeqr()   weighted extreme quantile regression (Functions/extremal_qr_inference.R)
-#   qte_skewt_multi() arm-wise log-skew-t regression, bootstrap intervals (Functions/skewt_method_helpers.R)
-# Each returns, per covariate profile, the estimate, interval, bias, coverage and interval length.
+# Competing methods of the simulation study: IPW (qte_ipw), Extreme QR (qte_extremeqr) and Skew-t
+# (qte_skewt_multi); each returns the estimate, interval, bias, coverage and interval length per profile.
 source(here::here("Functions/extremal_qr_inference.R"))
 source(here::here("Functions/skewt_method_helpers.R"))
 
@@ -40,6 +37,7 @@ summarize_boot_percentile <- function(boot_draws, true_qte, alpha = 0.05, probs 
   ), 3)
 }
 
+# extremal subsampling intervals at extreme levels, bootstrap intervals otherwise, IPW if both fail
 qte_extremeqr <- function(Y, D, X, new_X, tau, B = 200, true_qte, alpha) {
   weights <- extremalqr_compute_ps_weights(d = D, x = X)
   fit <- extremeqr_arm_cqte_core(
@@ -90,9 +88,8 @@ qte_extremeqr <- function(Y, D, X, new_X, tau, B = 200, true_qte, alpha) {
   ), 3)
 }
 
-# Same estimator as qte_skewt(), for several tau at once: the arm-wise fits (original sample and B
-# bootstrap samples) do not depend on tau, so they are computed once. true_qte: G x length(taus).
-# Returns a list over taus of the data frames returned by qte_skewt().
+# Skew-t for all tau at once: the arm-wise fits on the sample and the B bootstrap samples do not depend
+# on tau. true_qte: G x length(taus); returns a list over taus.
 qte_skewt_multi <- function(Y, D, X, new_X, taus, B = 100, true_qte, alpha) {
   X <- as.data.frame(X, check.names = FALSE)
   new_X <- as.data.frame(new_X, check.names = FALSE)
@@ -167,9 +164,3 @@ qte_ipw <- function(Y, D, X, new_X, tau, true_qte, alpha) {
     length_ci = length_ci
   ), 3)
 }
-
-
-
-
-
-

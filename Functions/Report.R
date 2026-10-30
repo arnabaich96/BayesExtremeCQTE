@@ -1,10 +1,8 @@
+# Two-stage MixGPD fit of every replicate of a simulated data set. u_lower_q: quantile level of the bound l_u;
+# n_ps_draws: 0 = posterior-mean PS, K > 0 = one stage-2 fit per posterior PS draw, with the CQTE draws pooled.
 Report <- function(DATA, n_mix, p_QTE, epsilon, CP = NULL, mcmc.plot = FALSE, kern =c("gamma","normal","lognormal"),
                    n_iter, n_burnin, n_chains, n_thin, n_cores,
                    block_size = 10, seed, tag = "spliced_500", u_lower_q = 0.60, n_ps_draws = 0) {
-  # tag:        label used in the output file names (scenario_N plus any suffix)
-  # u_lower_q:  the threshold lower bound l_u is the arm-specific empirical u_lower_q quantile of y
-  # n_ps_draws: 0 = plug-in posterior-mean PS; K > 0 = refit stage 2 for K posterior PS draws and
-  #             stack the stage-2 draws (cut posterior), which propagates PS uncertainty
   print('Importing Functions...')
   source(here("Functions/Sim.R"))
   source(here("Functions/Model_Code.R"))
@@ -31,7 +29,7 @@ Report <- function(DATA, n_mix, p_QTE, epsilon, CP = NULL, mcmc.plot = FALSE, ke
   out_dir <- here("Simulation/output")
   dir.create(file.path(out_dir, "Diagnostics"), showWarnings = FALSE, recursive = TRUE)
 
-  # Dummy model for PS (Bayesian logistic regression, N(0, 2.5^2) prior on the slopes)
+  # PS model compiled once (Bayesian logistic regression, N(0, 2.5^2) prior on the slopes)
   D0 <- data.frame(y = rbinom(nrow(DATA$X), 1, 0.5), DATA$X)
   dummy_model <- brm(
     y ~ .,
@@ -45,8 +43,7 @@ Report <- function(DATA, n_mix, p_QTE, epsilon, CP = NULL, mcmc.plot = FALSE, ke
   registerDoParallel(cl)
   on.exit({ try(stopCluster(cl), silent = TRUE) }, add = TRUE)
 
-  # Replicates already on disk for this tag are skipped, so an interrupted run resumes; a batch that
-  # fails (e.g. a worker dies) is retried on a fresh cluster up to three times.
+  # replicates already on disk are skipped; a failed batch is retried on a fresh cluster up to three times
   rep_file <- function(i) sprintf(file.path(out_dir, "qte_%s_%s_rep%03d.rds"), tag, kern, i)
   todo <- which(!file.exists(vapply(1:n_rep, rep_file, "")))
   for (attempt in 1:3) {
@@ -97,7 +94,7 @@ Report <- function(DATA, n_mix, p_QTE, epsilon, CP = NULL, mcmc.plot = FALSE, ke
                                         mcmc.plot, kern, n_iter, n_burnin, n_chains, n_thin, TRUE,
                                         hyper = hyper_con)
 
-                       # stack the stage-2 draws over PS draws
+                       # pool the stage-2 draws over the PS draws
                        for (j in seq_along(p_QTE)) {
                          Q_trt[[j]] <- rbind(Q_trt[[j]], out_treat$estimated_quantiles[[j]])
                          Q_con[[j]] <- rbind(Q_con[[j]], out_con$estimated_quantiles[[j]])
@@ -121,7 +118,7 @@ Report <- function(DATA, n_mix, p_QTE, epsilon, CP = NULL, mcmc.plot = FALSE, ke
                        }
                      }
 
-                     # --- QTE per tau on the same new_X grid (posterior mean; median kept for reference) ---
+                     # --- CQTE per tau on the evaluation profiles: posterior mean and equal-tailed CP interval ---
                      qte_list <- lapply(seq_along(p_QTE), function(j) {
                        qte <- Q_trt[[j]] - Q_con[[j]]
                        estimate <- apply(qte, 2, mean, na.rm = TRUE)
@@ -191,7 +188,7 @@ Report <- function(DATA, n_mix, p_QTE, epsilon, CP = NULL, mcmc.plot = FALSE, ke
   avg_length_ci <- apply(length_array, c(2,3), mean)
   avg_estimate  <- apply(estimate_array, c(2,3), mean)
   sd_estimate   <- apply(estimate_array, c(2,3), sd)
-  bias <- avg_estimate - t(qte_true)                     # estimate - truth (same sign as Competing.R)
+  bias <- avg_estimate - t(qte_true)                     # estimate - truth
   ise <- apply(bias_array, c(2,3), function(x) sqrt(mean(x^2, na.rm = TRUE)))   # RMSE
 
   result_df <- expand.grid(
