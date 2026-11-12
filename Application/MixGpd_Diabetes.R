@@ -1,5 +1,5 @@
 # PS model and all MixGPD fits of the application: main analysis (three kernels) and the sensitivity analyses
-# lu50/lu70/lu80 (threshold bound), trim (PS in [0.1, 0.9]), noglu (without stab.glu) and xisd10 (prior sd of xi 0.1).
+# lu50/lu70/lu80 (threshold bound), trim (PS in [0.1, 0.9]) and xisd10 (prior sd of xi 0.1).
 
 # ------------------------- 1. Packages and Setup -------------------------
 packages <- c("nimble", "here", "dplyr", "brms", "foreach", "doParallel")
@@ -40,9 +40,7 @@ make_grid <- function(dat, covs, grid_cont = c("age", "stab.glu", "ratio"), grid
   grid[, covs]
 }
 grid_main  <- make_grid(training_data, covariates)
-covs_noglu <- setdiff(covariates, "stab.glu")
-grid_noglu <- make_grid(training_data, covs_noglu)
-cat("Prediction grid:", nrow(grid_main), "profiles (", nrow(grid_noglu), "without stab.glu )\n")
+cat("Prediction grid:", nrow(grid_main), "profiles\n")
 
 p_QTE_diabetes <- 1 - c(0.75, 0.5, 0.25, 0.05, 10/N_train, 5/N_train, 1/(N_train^1.25),
                         1/(N_train * log(N_train)), 1/(N_train^1.5))
@@ -50,7 +48,6 @@ p_QTE_diabetes <- 1 - c(0.75, 0.5, 0.25, 0.05, 10/N_train, 5/N_train, 1/(N_train
 # ------------------------- 4. Stage 1: propensity scores -------------------------
 print("--- Stage 1: Bayesian propensity-score models ---")
 ps_main  <- fit_ps_app(training_data$obese, training_data[, covariates], grid_main, seed = seed)
-ps_noglu <- fit_ps_app(training_data$obese, training_data[, covs_noglu], grid_noglu, seed = seed)
 saveRDS(list(ps = ps_main$train, T = training_data$obese, X = training_data[, covariates],
              ps_model = ps_main$model),
         file.path(out_dir, "PS_main.rds"))
@@ -70,9 +67,6 @@ for (kern in c("gamma", "normal")) {
     jobs[[length(jobs) + 1]] <- list(name = sprintf("lu%02d", 100 * u_q), kern = kern, u_q = u_q, d = d_main,
                                      keep = rep(TRUE, N_train), grid = grid_main)
   }
-  jobs[[length(jobs) + 1]] <- list(name = "noglu", kern = kern, u_q = 0.60,
-                                   d = design(ps_noglu$train, ps_noglu$new, training_data, grid_noglu, covs_noglu),
-                                   keep = rep(TRUE, N_train), grid = grid_noglu)
   jobs[[length(jobs) + 1]] <- list(name = "xisd10", kern = kern, u_q = 0.60, d = d_main,
                                    keep = rep(TRUE, N_train), grid = grid_main, hyper = list(xi_sd = 0.1))
 }

@@ -40,7 +40,7 @@ tau_label <- function(t) ifelse(t < 0.99, sub("0+$", "", formatC(t, format = "f"
                                 formatC(t, format = "f", digits = 4))
 
 jobs_by <- list(main = "main", lu50 = "lu50", lu70 = "lu70", lu80 = "lu80", trim = "trim",
-                noglu = "noglu", xisd10 = "xisd10")
+                xisd10 = "xisd10")
 
 # ---------- Stratified tables (main analysis, MixInvNormGPD and MixGammaGPD) ----------
 strat_table <- function(var, labels, file) {
@@ -71,7 +71,6 @@ sens_rows <- list(
   c("$l_u$ at 70th percentile", "lu70"),
   c("$l_u$ at 80th percentile", "lu80"),
   c("Trimmed to PS in $[0.1, 0.9]$", "trim"),
-  c("Without stabilized glucose", "noglu"),
   c("Prior standard deviation of $\\xi$ equal to 0.1", "xisd10"))
 sens_csv <- list()
 sens_lines <- unlist(lapply(c(gamma = "MixGammaGPD", normal = "MixInvNormGPD"), function(kname) {
